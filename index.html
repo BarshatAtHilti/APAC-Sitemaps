@@ -1229,16 +1229,13 @@ if(window.__hiltiMapLibraryError || !window.L || typeof L.markerClusterGroup!=='
   search.addEventListener('input',draw);$('#clear').addEventListener('click',()=>{search.value='';draw();search.focus()});draw();return;
 }
 // Production map limits: users can navigate within the APAC operating area only.
-const APAC_BOUNDS=L.latLngBounds(L.latLng(-50,55),L.latLng(55,180));
-const map=L.map('map',{
-  zoomControl:true,
-  minZoom:2,
-  maxZoom:15,
-  maxBounds:APAC_BOUNDS,
-  maxBoundsViscosity:1.0,
-  worldCopyJump:false,
-  preferCanvas:true
-}).setView([8,105],3);
+const map = L.map('map', {
+  zoomControl: true,
+  minZoom: 2,
+  maxZoom: 7, // Prevent excessive zooming into streets
+  worldCopyJump: false,
+  preferCanvas: true
+}).setView([8, 105], 3);
 
 // Use an HTTP/HTTPS hosted page in production. The referrer policy and conservative
 // update settings improve compatibility and reduce unnecessary background requests.
