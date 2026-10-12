@@ -1,0 +1,1254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hilti Site Locations</title>
+
+<link rel="stylesheet" href="./leaflet/dist/leaflet.css">
+<link rel="stylesheet" href="./Leaflet.markercluster-master/dist/MarkerCluster.css">
+<link rel="stylesheet" href="./Leaflet.markercluster-master/dist/MarkerCluster.Default.css">
+
+<style>
+:root{--red:#d2051e;--neutral:#d7cebd;--white:#fff;--text:#333;--light:#f4f4f4;--border:#d8d8d8}
+*{box-sizing:border-box}html,body{height:100%;margin:0;font-family:Segoe UI,Arial,sans-serif;color:var(--text);background:#fff}
+body{overflow:hidden}.header{height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:#fff;border-bottom:3px solid var(--red);box-shadow:0 1px 4px #0002;position:relative;z-index:1000}.title{font-size:18px;font-weight:700}.meta{font-size:12px;color:#666}
+.app{height:calc(100% - 52px);display:grid;grid-template-columns:minmax(0,73%) minmax(300px,27%)}#map{height:100%;width:100%;background:#e9eef1}.panel{height:100%;display:flex;flex-direction:column;border-left:1px solid var(--border);background:#fff;min-width:0}.search-wrap{padding:12px;border-bottom:1px solid var(--border);position:relative}.search{width:100%;height:40px;border:1px solid #aaa;padding:0 38px 0 12px;font:inherit;border-radius:2px}.search:focus{outline:3px solid #d2051e33;border-color:var(--red)}.clear{position:absolute;right:19px;top:18px;border:0;background:transparent;font-size:22px;color:#666;cursor:pointer;line-height:24px}.status{padding:8px 12px;background:var(--light);border-bottom:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between;gap:8px}.list{flex:1;overflow:auto}.site{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid #e4e4e4;background:#fff;padding:10px 12px;cursor:pointer;color:inherit}.site:hover,.site:focus{background:#faf7f3;outline:none}.site.selected{border-left:4px solid var(--red);padding-left:8px;background:#fff4f5}.site-name{font-weight:700;font-size:14px}.site-sub{font-size:12px;color:#666;margin-top:3px;line-height:1.35}.badge{display:inline-block;margin-top:5px;padding:2px 5px;background:var(--light);font-size:11px}.badge.unmapped{color:#7a4c00;background:#fff4d6}.empty{padding:24px 12px;text-align:center;color:#666}.details{border-top:2px solid var(--neutral);padding:12px;max-height:34%;overflow:auto;background:#fff}.details h2{font-size:16px;margin:0 0 6px}.details p{font-size:13px;line-height:1.4;margin:4px 0}.map-link{display:inline-block;margin-top:7px;color:var(--red);font-weight:700;text-decoration:none}.map-link:hover{text-decoration:underline}.leaflet-popup-content{margin:12px 14px;line-height:1.35}.popup-title{font-weight:700;margin-bottom:5px}.pin{width:24px;height:24px;border-radius:50% 50% 50% 0;background:var(--red);transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px #0008}.pin:after{content:"";position:absolute;width:7px;height:7px;background:#fff;border-radius:50%;top:6px;left:6px}.pin-wrap{background:transparent;border:0}.pin-wrap.hover .pin{background:#333;transform:rotate(-45deg) scale(1.18)}.marker-cluster div{background:var(--red);color:#fff;font-weight:700}.marker-cluster{background:#d2051e55}.cluster-tip{max-height:270px;overflow:auto;min-width:260px}.cluster-item{padding:6px 0;border-bottom:1px solid #ddd}.cluster-item:last-child{border-bottom:0}.cluster-item strong{display:block}.cluster-tip a{color:var(--red)}.leaflet-tooltip{white-space:normal}
+.map-alert{display:none;position:absolute;z-index:900;top:12px;left:50%;transform:translateX(-50%);max-width:620px;padding:10px 12px;background:#fff4d6;border:1px solid #9a6b00;border-left:4px solid var(--red);box-shadow:0 2px 8px #0003;font-size:13px;line-height:1.35}.map-alert.show{display:block}.map-fallback{height:100%;display:flex;align-items:center;justify-content:center;padding:28px;text-align:center;color:#555;background:#f4f4f4}.map-fallback strong{display:block;color:#333;margin-bottom:6px}
+@media(max-width:760px){body{overflow:auto}.header{height:48px}.meta{display:none}.app{height:calc(100dvh - 48px);display:flex;flex-direction:column}.app #map{height:55%;min-height:310px}.panel{height:45%;border-left:0;border-top:1px solid var(--border)}.details{display:none}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<header class="header"><div class="title">Hilti Site Locations</div><div class="meta" id="headerMeta">Loading directory…</div></header>
+<main class="app"><div id="map" role="application" aria-label="Interactive map of Hilti site locations"><div id="mapAlert" class="map-alert" role="status" aria-live="polite"></div></div><aside class="panel" aria-label="Site directory"><div class="search-wrap"><label for="search" style="position:absolute;left:-9999px">Search sites</label><input id="search" class="search" type="search" placeholder="Search name, address, city, state or postcode" autocomplete="off"><button id="clear" class="clear" title="Clear search" aria-label="Clear search">×</button></div><div class="status"><span id="resultCount"></span></div><div id="list" class="list" role="listbox" aria-label="Hilti sites"></div><section id="details" class="details" aria-live="polite"><p>Select a site to view details.</p></section></aside></main>
+
+<script src="./leaflet/dist/leaflet.js"
+        onerror="window.__hiltiMapLibraryError=true"></script>
+
+<script src="./Leaflet.markercluster-master/dist/leaflet.markercluster.js"
+        onerror="window.__hiltiMapLibraryError=true"></script>
+
+<script>
+(function(){
+'use strict';
+const SITES = [
+  {
+    "country": "AU",
+    "id": "AUHQRHO",
+    "name": "AU, HQ, Rhodes",
+    "type": "HQ",
+    "city": "Rhodes",
+    "address": "1G Homebush Bay Dr, Rhodes NSW 2138",
+    "state": "New South Wales",
+    "latitude": -33.8335,
+    "longitude": 151.0873,
+    "countryName": "Australia",
+    "location_basis_notes": "Rhodes, NSW"
+  },
+  {
+    "country": "AU",
+    "id": "AURCSEV",
+    "name": "AU, RC, Seven Hills",
+    "type": "WH/DC/TSC small",
+    "city": "Seven Hills",
+    "address": "Unit 5/163 Prospect Highway, Seven Hills NSW 2147",
+    "state": "New South Wales",
+    "latitude": -33.775,
+    "longitude": 150.934,
+    "countryName": "Australia",
+    "location_basis_notes": "Seven Hills, NSW"
+  },
+  {
+    "country": "AU",
+    "id": "AUHSADE",
+    "name": "AU, HS, Adelaide",
+    "type": "HS",
+    "city": "Mile End South",
+    "address": "183 Railway Terrace, Mile End South SA 5031",
+    "state": "South Australia",
+    "latitude": -34.937018,
+    "longitude": 138.57756,
+    "countryName": "Australia",
+    "location_basis_notes": "Mile End South, SA; address reference"
+  },
+  {
+    "country": "AU",
+    "id": "AUHSALE",
+    "name": "AU, HS, Alexandria",
+    "type": "HS",
+    "city": "Alexandria",
+    "address": "154 Bourke Rd, Alexandria NSW 2015",
+    "state": "New South Wales",
+    "latitude": -33.912,
+    "longitude": 151.194,
+    "countryName": "Australia",
+    "location_basis_notes": "Alexandria, NSW"
+  },
+  {
+    "country": "AU",
+    "id": "AUHSHAL",
+    "name": "AU, HS, Brisbane",
+    "type": "HS",
+    "city": "Brisbane",
+    "address": "718 Kingsford Smith Drive, Hamilton QLD 4007",
+    "state": "Queensland",
+    "latitude": -27.43469,
+    "longitude": 153.076763,
+    "countryName": "Australia",
+    "location_basis_notes": "Hamilton, QLD; address reference"
+  },
+  {
+    "country": "AU",
+    "id": "AUHSGOL",
+    "name": "AU, HS, Gold Coast",
+    "type": "HS",
+    "city": "Gold Coast",
+    "address": "5/46-50 Spencer Road, Nerang QLD 4211",
+    "state": "Queensland",
+    "latitude": -27.989,
+    "longitude": 153.337,
+    "countryName": "Australia",
+    "location_basis_notes": "Nerang, QLD"
+  },
+  {
+    "country": "AU",
+    "id": "AUHSMEL",
+    "name": "AU, HS, Melbourne",
+    "type": "HS",
+    "city": "Melbourne",
+    "address": "7/600 Lorimer Street, Port Melbourne VIC 3207",
+    "state": "Victoria",
+    "latitude": -37.831,
+    "longitude": 144.923,
+    "countryName": "Australia",
+    "location_basis_notes": "Port Melbourne, VIC"
+  },
+  {
+    "country": "AU",
+    "id": "AUHSPER",
+    "name": "AU, HS, Perth",
+    "type": "HS",
+    "city": "Belmont",
+    "address": "150 Abernethy Road, Belmont WA 6104",
+    "state": "Western Australia",
+    "latitude": -31.958,
+    "longitude": 115.934,
+    "countryName": "Australia",
+    "location_basis_notes": "Belmont, WA"
+  },
+  {
+    "country": "AU",
+    "id": "AUHSSEV",
+    "name": "AU, HS, Seven Hills",
+    "type": "HS",
+    "city": "Seven Hills",
+    "address": "1/1 Tucks Road, Seven Hills NSW 2147",
+    "state": "New South Wales",
+    "latitude": -33.775,
+    "longitude": 150.934,
+    "countryName": "Australia",
+    "location_basis_notes": "Seven Hills, NSW"
+  },
+  {
+    "country": "AU",
+    "id": "AUWHPEM",
+    "name": "AU, RC, Pemulwuy",
+    "type": "WH/DC/TSC small",
+    "city": "Pemulwuy",
+    "address": "1 Basalt Rd, Pemulwuy NSW 2145",
+    "state": "New South Wales",
+    "latitude": -33.824,
+    "longitude": 150.924,
+    "countryName": "Australia",
+    "location_basis_notes": "Pemulwuy, NSW"
+  },
+  {
+    "country": "ID",
+    "id": "IDHQJKT",
+    "name": "ID, HQ, Jakarta",
+    "type": "HQ small",
+    "city": "Jakarta",
+    "address": "The Garden Centre Lv.3 No. 3-11B, Cilandak Commercial Estate, Cilandak KKO, Jakarta Selatan 12560",
+    "state": "Jakarta Raya",
+    "latitude": -6.291,
+    "longitude": 106.805,
+    "countryName": "Indonesia",
+    "location_basis_notes": "Cilandak, Jakarta Selatan"
+  },
+  {
+    "country": "ID",
+    "id": "IDWHJKT",
+    "name": "ID, WH, Jakarta",
+    "type": "WH/DC/TSC small",
+    "city": "Jakarta Utara",
+    "address": "PT DHL Global Forwarding, Jln. Pegangsaan Dua No. 99, Kelapa Gading, Jakarta Utara 14240",
+    "state": "Jakarta Raya",
+    "latitude": -6.151,
+    "longitude": 106.906,
+    "countryName": "Indonesia",
+    "location_basis_notes": "Kelapa Gading, Jakarta Utara"
+  },
+  {
+    "country": "ID",
+    "id": "IDHSSUR",
+    "name": "ID, HS, Surabaya",
+    "type": "HS",
+    "city": "Surabaya",
+    "address": "Wisma SIER, Jl Rungkut Industri Raya 10, Surabaya 60401",
+    "state": "Jawa Timur",
+    "latitude": -7.318,
+    "longitude": 112.733,
+    "countryName": "Indonesia",
+    "location_basis_notes": "Surabaya"
+  },
+  {
+    "country": "IN",
+    "id": "INHQGUR",
+    "name": "IN, HQ, New Delhi",
+    "type": "HQ medium",
+    "city": "Gurgaon",
+    "address": "Building No. 8, Tower C, 6th Floor, DLF Cyber City, Phase 2, Gurgaon",
+    "state": "Haryana",
+    "latitude": 28.495,
+    "longitude": 77.089,
+    "countryName": "India",
+    "location_basis_notes": "DLF Cyber City, Gurugram"
+  },
+  {
+    "country": "INPL",
+    "id": "INPL11VAD",
+    "name": "IN, PL, HMI",
+    "type": "Plant",
+    "city": "Navsari",
+    "address": "Hilti Manufacturing India Pvt. Ltd. (HMI), Plot No. 5 & 6, 2, Savli GIDC, Vadodara, Gujarat 391775",
+    "state": "Gujarat",
+    "latitude": 22.48,
+    "longitude": 73.2,
+    "countryName": "India",
+    "location_basis_notes": "Savli GIDC/Vadodara area; address and city conflict"
+  },
+  {
+    "country": "IN",
+    "id": "INRCDEL",
+    "name": "IN, RC, Delhi",
+    "type": "WH/DC/TSC small",
+    "city": "New Delhi",
+    "address": "D-12/4, Okhla Industrial Area, Phase II, New Delhi 110020",
+    "state": "Delhi",
+    "latitude": 28.535,
+    "longitude": 77.274,
+    "countryName": "India",
+    "location_basis_notes": "Okhla Industrial Area, New Delhi"
+  },
+  {
+    "country": "IN",
+    "id": "INRCBAN",
+    "name": "IN, RC, Bangalore",
+    "type": "WH/DC/TSC small",
+    "city": "Bangalore",
+    "address": "Katha No. 54, Assessment No. 86, Bommasandra Industrial Area, Bommasandra Gram Panchayat, Bangalore 560099",
+    "state": "Karnataka",
+    "latitude": 12.803,
+    "longitude": 77.681,
+    "countryName": "India",
+    "location_basis_notes": "Bommasandra Industrial Area"
+  },
+  {
+    "country": "IN",
+    "id": "INRCMUM",
+    "name": "IN, RC, Mumbai",
+    "type": "WH/DC/TSC small",
+    "city": "Mumbai",
+    "address": "D-233/1, T.T.C. Industrial Area, Shiravane, Nerul, Navi Mumbai 400706",
+    "state": "Maharashtra",
+    "latitude": 19.043,
+    "longitude": 73.016,
+    "countryName": "India",
+    "location_basis_notes": "Nerul, Navi Mumbai"
+  },
+  {
+    "country": "IN",
+    "id": "INRCHYD",
+    "name": "IN, RC, Hyderabad",
+    "type": "WH/DC/TSC small",
+    "city": "Hyderabad",
+    "address": "Plot No. B13, AIE, BHEL, RC Puram, Hyderabad 500032",
+    "state": "Andhra Pradesh",
+    "latitude": 17.53,
+    "longitude": 78.27,
+    "countryName": "India",
+    "location_basis_notes": "RC Puram area"
+  },
+  {
+    "country": "IN",
+    "id": "INRCKOL",
+    "name": "IN, RC, Kolkata",
+    "type": "WH/DC/TSC small",
+    "city": "Kolkata",
+    "address": "Panjavilla, Jagarata Pally, Despina Nagar, Belghoria, Kolkata 700056",
+    "state": "West Bengal",
+    "latitude": 22.663,
+    "longitude": 88.383,
+    "countryName": "India",
+    "location_basis_notes": "Belghoria"
+  },
+  {
+    "country": "IN",
+    "id": "INHSAHM",
+    "name": "IN, HS, Ahmedabad",
+    "type": "HS",
+    "city": "Ahmedabad",
+    "address": "Showroom No. 6-7, Circle-P, Near Honest Restaurant, S.G. Highway, Ahmedabad 380015",
+    "state": "Gujarat",
+    "latitude": 23.04,
+    "longitude": 72.51,
+    "countryName": "India",
+    "location_basis_notes": "SG Highway, Ahmedabad"
+  },
+  {
+    "country": "IN",
+    "id": "INHSBAN",
+    "name": "IN, HS, Bangalore",
+    "type": "HS",
+    "city": "Bangalore",
+    "address": "No. 22/163-1, 9th Main Road, 3rd Block, Jayanagar, Near Ramakrishna Nursing Home, Bangalore 560011",
+    "state": "Karnataka",
+    "latitude": 12.925,
+    "longitude": 77.583,
+    "countryName": "India",
+    "location_basis_notes": "Jayanagar, Bengaluru"
+  },
+  {
+    "country": "IN",
+    "id": "INHSDEL",
+    "name": "IN, HS, Delhi",
+    "type": "HS",
+    "city": "New Delhi",
+    "address": "A 16, Block B-1, Mohan Co-operative Industrial Estate, New Delhi 110044",
+    "state": "Delhi",
+    "latitude": 28.528,
+    "longitude": 77.282,
+    "countryName": "India",
+    "location_basis_notes": "Mohan Cooperative Industrial Estate"
+  },
+  {
+    "country": "IN",
+    "id": "INHSGOA",
+    "name": "IN, HS, Goa",
+    "type": "HS",
+    "city": "Patto, Panjim",
+    "address": "Shop G9, Gera Imperium II, Patto, Panjim, Goa 403001",
+    "state": "Goa",
+    "latitude": 15.498,
+    "longitude": 73.827,
+    "countryName": "India",
+    "location_basis_notes": "Patto, Panjim"
+  },
+  {
+    "country": "IN",
+    "id": "INHSKOL",
+    "name": "IN, HS, Kolkata",
+    "type": "HS",
+    "city": "Kolkata",
+    "address": "DGK 24/25, DLF Galleria, Premises No. 02-124, Plot No. BG/8, AA-IB Action Area 1, New Town Rajarhat, Kolkata 700156",
+    "state": "West Bengal",
+    "latitude": 22.58,
+    "longitude": 88.46,
+    "countryName": "India",
+    "location_basis_notes": "New Town/Rajarhat, Kolkata"
+  },
+  {
+    "country": "IN",
+    "id": "INHSVIK",
+    "name": "IN, HS, Vikhroli",
+    "type": "HS",
+    "city": "Mumbai",
+    "address": "Karma Stambh, Ground Floor, Opp. Kailash Commercial Complex, MTNL Exchange, Near Home Town, LBS Marg, Vikhroli West, Mumbai 400083",
+    "state": "Maharashtra",
+    "latitude": 19.105,
+    "longitude": 72.927,
+    "countryName": "India",
+    "location_basis_notes": "Vikhroli, Mumbai"
+  },
+  {
+    "country": "IN",
+    "id": "INHSCHA",
+    "name": "IN, HS, Chandigarh",
+    "type": "HS",
+    "city": "Chandigarh",
+    "address": "Ground Floor, Block F, Aero City, SAS Nagar (Mohali), Punjab 140306",
+    "state": "Punjab",
+    "latitude": 30.67,
+    "longitude": 76.8,
+    "countryName": "India",
+    "location_basis_notes": "Aerocity/Mohali area"
+  },
+  {
+    "country": "IN",
+    "id": "INDCAHM",
+    "name": "IN, DC, Ahmedabad",
+    "type": "WH/DC/TSC small",
+    "city": "Ahmedabad",
+    "address": "Delhivery Pvt. Ltd., Survey No. 520/1 & 520/2, Temenos Logistic Park, Warehouse No. 2, Sarkhej-Bavla Road, Matoda, Sanand, Ahmedabad 382213",
+    "state": "Gujarat",
+    "latitude": 22.84,
+    "longitude": 72.38,
+    "countryName": "India",
+    "location_basis_notes": "Matoda/Sanand area"
+  },
+  {
+    "country": "IN",
+    "id": "INDCBAN",
+    "name": "IN, DC, Bangalore",
+    "type": "WH/DC/TSC small",
+    "city": "Bangalore",
+    "address": "Delhivery Pvt. Ltd., Address No. 37, 38, 39, 5, 4, Hoblapura, Anugondanahalli, Hoskote Taluk, Bangalore 562114",
+    "state": "Karnataka",
+    "latitude": 13.07,
+    "longitude": 77.8,
+    "countryName": "India",
+    "location_basis_notes": "Hoskote area"
+  },
+  {
+    "country": "IN",
+    "id": "INDCHYD",
+    "name": "IN, DC, Hyderabad",
+    "type": "WH/DC/TSC small",
+    "city": "Hyderabad",
+    "address": "S. No. 45, Kandlakoya, Medchal Mandal, Hyderabad 501401",
+    "state": "Andhra Pradesh",
+    "latitude": 17.63,
+    "longitude": 78.49,
+    "countryName": "India",
+    "location_basis_notes": "Medchal area"
+  },
+  {
+    "country": "IN",
+    "id": "INDCJHA",
+    "name": "IN, DC, Delhi",
+    "type": "WH/DC/TSC small",
+    "city": "Haryana",
+    "address": "DHL Supply Chain India Pvt Ltd, IndoSpace FWS Industrial Park, Village Luhari, Pataudi-Kulana Road MDR-132, Jhajjar",
+    "state": "Delhi",
+    "latitude": 28.43,
+    "longitude": 76.72,
+    "countryName": "India",
+    "location_basis_notes": "Luhari/Jhajjar, Haryana; address overrides city/state"
+  },
+  {
+    "country": "IN",
+    "id": "INDCKOL",
+    "name": "IN, DC, Kolkata",
+    "type": "WH/DC/TSC small",
+    "city": "Kolkata",
+    "address": "414 to 566, 541/971, 514/971, 477/1209, 477/1208, LR Khatian No. 2104, JL No. 83, Mouza Dankuni Bill, Kolkata 712310",
+    "state": "West Bengal",
+    "latitude": 22.68,
+    "longitude": 88.29,
+    "countryName": "India",
+    "location_basis_notes": "Dankuni"
+  },
+  {
+    "country": "IN",
+    "id": "INWHMUM",
+    "name": "IN, WH, Mumbai",
+    "type": "WH/DC/TSC small",
+    "city": "Mumbai",
+    "address": "DHL Supply Chain India Pvt Ltd, BGR Warehousing Complex, Building No. 3, Mumbai Nashik Highway, Village Vahuli, Bhiwandi, Thane",
+    "state": "Maharashtra",
+    "latitude": 19.3,
+    "longitude": 73.05,
+    "countryName": "India",
+    "location_basis_notes": "Bhiwandi"
+  },
+  {
+    "country": "IN",
+    "id": "INRCAHM",
+    "name": "IN, RC, Ahmedabad",
+    "type": "WH/DC/TSC small",
+    "city": "Ahmedabad",
+    "address": "Shed No. 7, 8 and 9, Shivam Estate 3, Behind Bhagyoday Hotel, Sarkhej-Bavla Highway, Ahmedabad 382210",
+    "state": "Gujarat",
+    "latitude": 22.99,
+    "longitude": 72.38,
+    "countryName": "India",
+    "location_basis_notes": "Sanand area"
+  },
+  {
+    "country": "IN",
+    "id": "INHOPUN",
+    "name": "IN, HO, Pune",
+    "type": "HQ small",
+    "city": "Pune",
+    "address": "V-18, 8th Floor, Survey No. 18/2A, Balewadi High Street, Balewadi, Pune 411045",
+    "state": "Maharashtra",
+    "latitude": 18.57,
+    "longitude": 73.78,
+    "countryName": "India",
+    "location_basis_notes": "Balewadi, Pune"
+  },
+  {
+    "country": "MY",
+    "id": "MYACCPET",
+    "name": "MY, ACC, Petaling (HAITS)",
+    "type": "HQ medium",
+    "city": "Petaling Jaya",
+    "address": "Brunsfield Tower 3, Oasis Square, No. 2 Jalan PJU 1A/7A, Oasis Damansara, Petaling Jaya",
+    "state": "Selangor",
+    "latitude": 3.114,
+    "longitude": 101.576,
+    "countryName": "Malaysia",
+    "location_basis_notes": "Oasis Square, Ara Damansara"
+  },
+  {
+    "country": "MY",
+    "id": "MYHOPET",
+    "name": "MY, HQ, Ara DamansaraHQ",
+    "type": "HQ",
+    "city": "Petaling Jaya",
+    "address": "Level 6, Brunsfield Oasis Tower 3, Oasis Square, Oasis Ara Damansara, 47301 Petaling Jaya",
+    "state": "Selangor",
+    "latitude": 3.114,
+    "longitude": 101.576,
+    "countryName": "Malaysia",
+    "location_basis_notes": "Oasis Square, Ara Damansara"
+  },
+  {
+    "country": "MY",
+    "id": "MYHQARA",
+    "name": "MY, HQ, Ara Damansara",
+    "type": "HQ small",
+    "city": "Petaling Jaya",
+    "address": "Oasis Square, F-5-A, Sime Darby Brunsfield Tower, Petaling Jaya",
+    "state": "Selangor",
+    "latitude": 3.114,
+    "longitude": 101.576,
+    "countryName": "Malaysia",
+    "location_basis_notes": "Oasis Square, Ara Damansara"
+  },
+  {
+    "country": "MY",
+    "id": "MYRCSHA",
+    "name": "MY, RC, Shah Alam",
+    "type": "WH/DC/TSC small",
+    "city": "Shah Alam",
+    "address": "3 Jalan Tukang 16/4, Seksyen 16, 40200 Shah Alam",
+    "state": "Selangor",
+    "latitude": 3.073,
+    "longitude": 101.52,
+    "countryName": "Malaysia",
+    "location_basis_notes": "Shah Alam"
+  },
+  {
+    "country": "MY",
+    "id": "MYWHSHA",
+    "name": "MY, WH, Shah Alam",
+    "type": "Warehouse",
+    "city": "Shah Alam",
+    "address": "Mapletree Logistics Hub, Units GF 2.1 & GF 2.7, Jalan 22/1, Seksyen 22, 40300 Shah Alam",
+    "state": "Selangor",
+    "latitude": 3.073,
+    "longitude": 101.52,
+    "countryName": "Malaysia",
+    "location_basis_notes": "Shah Alam"
+  },
+  {
+    "country": "MY",
+    "id": "MYPLSHA",
+    "name": "MY, PL, Shah Alam",
+    "type": "",
+    "city": "Shah Alam",
+    "address": "Lot 5, Persiaran Raja Muda, Seksyen 16, 40200 Shah Alam",
+    "state": "Selangor",
+    "latitude": 3.073,
+    "longitude": 101.52,
+    "countryName": "Malaysia",
+    "location_basis_notes": "Shah Alam"
+  },
+  {
+    "country": "MY",
+    "id": "MYHOKLA",
+    "name": "MY, HO, Kapar",
+    "type": "MO",
+    "city": "Kapar",
+    "address": "No. 15, Jalan Korporat 9/KU9, Taman Perindustrian Meru, 42200 Kapar, Selangor Darul Ehsan",
+    "state": "Malaysia",
+    "latitude": 3.12,
+    "longitude": 101.36,
+    "countryName": "Malaysia",
+    "location_basis_notes": "Kapar, Selangor"
+  },
+  {
+    "country": "NZ",
+    "id": "NZHQAUC",
+    "name": "NZ, HQ, Auckland",
+    "type": "HQ small",
+    "city": "Auckland",
+    "address": "Building B, Level 1, 600 Great South Road, Ellerslie, Auckland 1051",
+    "state": "Auckland",
+    "latitude": -36.912,
+    "longitude": 174.805,
+    "countryName": "New Zealand",
+    "location_basis_notes": "Ellerslie, Auckland"
+  },
+  {
+    "country": "NZ",
+    "id": "NZRCAUC",
+    "name": "NZ, RC, Auckland",
+    "type": "WH/DC/TSC small",
+    "city": "Penrose",
+    "address": "Unit 525B Great South Road, Penrose, Auckland 1061",
+    "state": "Auckland",
+    "latitude": -36.91,
+    "longitude": 174.82,
+    "countryName": "New Zealand",
+    "location_basis_notes": "Penrose, Auckland"
+  },
+  {
+    "country": "NZ",
+    "id": "NZWHAUC",
+    "name": "NZ, WH, Auckland",
+    "type": "WH/DC/TSC small",
+    "city": "Mangere",
+    "address": "13 Maurice Wilson Avenue, Mangere, Auckland 2022",
+    "state": "Auckland",
+    "latitude": -36.97,
+    "longitude": 174.79,
+    "countryName": "New Zealand",
+    "location_basis_notes": "Mangere, Auckland"
+  },
+  {
+    "country": "NZ",
+    "id": "NZHSCHR",
+    "name": "NZ, HS, Christchurch",
+    "type": "HS",
+    "city": "Christchurch",
+    "address": "71 Ferry Road, Christchurch Central City, Christchurch 8011",
+    "state": "Waimairi",
+    "latitude": -43.536,
+    "longitude": 172.65,
+    "countryName": "New Zealand",
+    "location_basis_notes": "Christchurch"
+  },
+  {
+    "country": "PH",
+    "id": "PHHQPAS",
+    "name": "PH, HQ, Pasig City",
+    "type": "HQ small",
+    "city": "Pasig City",
+    "address": "9th Floor Robinsons Cyberscape Beta, Topaz and Ruby Road, Ortigas Center, Pasig City",
+    "state": "Manila",
+    "latitude": 14.586,
+    "longitude": 121.061,
+    "countryName": "Philippines",
+    "location_basis_notes": "Ortigas Center, Pasig"
+  },
+  {
+    "country": "PH",
+    "id": "PHRCMAK",
+    "name": "PH, RC, Makati City",
+    "type": "WH/DC/TSC small",
+    "city": "Makati City",
+    "address": "2256 OPVI Center, Pasong Tamo Extension, Makati City",
+    "state": "Manila",
+    "latitude": 14.545,
+    "longitude": 121.014,
+    "countryName": "Philippines",
+    "location_basis_notes": "Pasong Tamo Extension, Makati"
+  },
+  {
+    "country": "PH",
+    "id": "PHWHSUC",
+    "name": "PH, WH, Sucat",
+    "type": "WH/DC/TSC small",
+    "city": "Muntinlupa City",
+    "address": "Km. 21, Villongco corner West Service Road, Barangay Sucat, Muntinlupa City",
+    "state": "Manila",
+    "latitude": 14.439,
+    "longitude": 121.045,
+    "countryName": "Philippines",
+    "location_basis_notes": "Sucat, Muntinlupa; address incomplete"
+  },
+  {
+    "country": "SG",
+    "id": "SGHQSIN",
+    "name": "SG, HQ, Singapore",
+    "type": "HQ medium",
+    "city": "Singapore",
+    "address": "80 Pasir Panjang Road #16-83/84, Mapletree Business City, Singapore",
+    "state": "Singapore",
+    "latitude": 1.2756,
+    "longitude": 103.8007,
+    "countryName": "Singapore",
+    "location_basis_notes": "80 Pasir Panjang Road"
+  },
+  {
+    "country": "SG",
+    "id": "SG-ROW-WH-OGLAEND",
+    "name": "SG, WH, Oglaend",
+    "type": "HO",
+    "city": "Singapore",
+    "address": "10 Changi South Lane, Ossia Building, Singapore 486162",
+    "state": "Singapore",
+    "latitude": 1.334,
+    "longitude": 103.966,
+    "countryName": "Singapore",
+    "location_basis_notes": "Changi South Lane"
+  },
+  {
+    "country": "SG",
+    "id": "SGRCSIN",
+    "name": "SG, RC, Singapore",
+    "type": "TSC",
+    "city": "Singapore",
+    "address": "28 Pioneer Crescent #02-14, West Park Biz Central, Singapore",
+    "state": "Singapore",
+    "latitude": 1.319,
+    "longitude": 103.697,
+    "countryName": "Singapore",
+    "location_basis_notes": "Pioneer Crescent"
+  },
+  {
+    "country": "SG",
+    "id": "SGWHDHL",
+    "name": "SG, WH, Singapore",
+    "type": "WH",
+    "city": "Singapore",
+    "address": "2 Pioneer Sector 1, Level 3, Singapore 628414",
+    "state": "Singapore",
+    "latitude": 1.323,
+    "longitude": 103.686,
+    "countryName": "Singapore",
+    "location_basis_notes": "Pioneer Sector 1"
+  },
+  {
+    "country": "SG",
+    "id": "SGTCPAN",
+    "name": "SG, TC, Pandan",
+    "type": "HO",
+    "city": "Singapore",
+    "address": "25 Pandan Crescent, Tic Tech Building, #06-15 & #04-03/04, Singapore",
+    "state": "Singapore",
+    "latitude": 1.321,
+    "longitude": 103.748,
+    "countryName": "Singapore",
+    "location_basis_notes": "Pandan Crescent"
+  },
+  {
+    "country": "TH",
+    "id": "THHQBKK",
+    "name": "TH, HQ, Bangkok",
+    "type": "HQ small",
+    "city": "Bangna",
+    "address": "1858/107-108, 24th Floor, Interlink Tower, Debaratna Road, Bangkok",
+    "state": "Bangkok",
+    "latitude": 13.668,
+    "longitude": 100.608,
+    "countryName": "Thailand",
+    "location_basis_notes": "Bangna, Bangkok"
+  },
+  {
+    "country": "TH",
+    "id": "THRCBKK",
+    "name": "TH, RC, Bangkok",
+    "type": "WH/DC/TSC small",
+    "city": "Bangplee",
+    "address": "3/11 Moo 3, King Kaeo Road, Racha Thewa, Bang Phli",
+    "state": "Samut Prakan",
+    "latitude": 13.63,
+    "longitude": 100.75,
+    "countryName": "Thailand",
+    "location_basis_notes": "Bangplee, Samut Prakan"
+  },
+  {
+    "country": "TH",
+    "id": "THWHKIN",
+    "name": "TH, WH, KingKaew",
+    "type": "WH/DC/TSC small",
+    "city": "Bangpli",
+    "address": "789/4 Moo 9, TIP Project 7, Bang Pla, Bang Phli",
+    "state": "Samut Prakan",
+    "latitude": 13.61,
+    "longitude": 100.72,
+    "countryName": "Thailand",
+    "location_basis_notes": "Bangpla, Samut Prakan"
+  },
+  {
+    "country": "VN",
+    "id": "VNHQHCM",
+    "name": "VN, HQ, Ho Chi Minh City",
+    "type": "HQ",
+    "city": "Ho Chi Minh City",
+    "address": "15 Tran Khac Chan, Tan Dinh Ward, Ho Chi Minh City, Vietnam",
+    "state": "Ho Chi Minh",
+    "latitude": 10.789,
+    "longitude": 106.691,
+    "countryName": "Vietnam",
+    "location_basis_notes": "Tan Dinh, Ho Chi Minh City"
+  },
+  {
+    "country": "TW",
+    "id": "TW Office Kaohsiung",
+    "name": "TW, Office, Kaohsiung",
+    "type": "Office",
+    "city": "Kaohsiung",
+    "address": "Nanzih District, Kaohsiung; approximate district location",
+    "state": "",
+    "latitude": 22.725,
+    "longitude": 120.296,
+    "countryName": "Taiwan",
+    "location_basis_notes": "Nanzih District, Kaohsiung; approximate district location"
+  },
+  {
+    "country": "TW",
+    "id": "TW HQ Taipei",
+    "name": "TW, HQ, Taipei",
+    "type": "HQ",
+    "city": "Taipei",
+    "address": "Xinzhan Road, Banqiao, New Taipei City",
+    "state": "",
+    "latitude": 25.013,
+    "longitude": 121.465,
+    "countryName": "Taiwan",
+    "location_basis_notes": "Xinzhan Road, Banqiao, New Taipei City"
+  },
+  {
+    "country": "TW",
+    "id": "TW RC Wugu",
+    "name": "TW, RC, Wugu",
+    "type": "RC",
+    "city": "Wugu",
+    "address": "Wuquan 7th Road, Wugu, New Taipei City",
+    "state": "",
+    "latitude": 25.08,
+    "longitude": 121.418,
+    "countryName": "Taiwan",
+    "location_basis_notes": "Wuquan 7th Road, Wugu, New Taipei City"
+  },
+  {
+    "country": "TW",
+    "id": "TW WH Taoyuan",
+    "name": "TW, WH, Taoyuan",
+    "type": "WH",
+    "city": "Taoyuan",
+    "address": "Dayuan / Kuo Chi Road area; address lines conflict",
+    "state": "",
+    "latitude": 25.065,
+    "longitude": 121.19,
+    "countryName": "Taiwan",
+    "location_basis_notes": "Dayuan / Kuo Chi Road area; address lines conflict"
+  },
+  {
+    "country": "KR",
+    "id": "KR HQ Seoul",
+    "name": "KR, HQ, Seoul",
+    "type": "HQ",
+    "city": "Seoul",
+    "address": "Songpa-gu, Seoul",
+    "state": "",
+    "latitude": 37.485,
+    "longitude": 127.12,
+    "countryName": "South Korea",
+    "location_basis_notes": "Songpa-gu, Seoul"
+  },
+  {
+    "country": "KR",
+    "id": "KR RC Busan",
+    "name": "KR, RC, Busan / Changwon",
+    "type": "RC",
+    "city": "Busan / Changwon",
+    "address": "Sinhang 6-ro, Jinhae-gu, Changwon",
+    "state": "",
+    "latitude": 35.102,
+    "longitude": 128.797,
+    "countryName": "South Korea",
+    "location_basis_notes": "Sinhang 6-ro, Jinhae-gu, Changwon"
+  },
+  {
+    "country": "KR",
+    "id": "KR HQ Busan",
+    "name": "KR, HQ, Busan",
+    "type": "HQ",
+    "city": "Busan",
+    "address": "Saha-gu, Busan",
+    "state": "",
+    "latitude": 35.083,
+    "longitude": 128.966,
+    "countryName": "South Korea",
+    "location_basis_notes": "Saha-gu, Busan"
+  },
+  {
+    "country": "KR",
+    "id": "KR WH Anseong",
+    "name": "KR, WH, Anseong",
+    "type": "WH",
+    "city": "Anseong",
+    "address": "Iljuk-myeon, Anseong",
+    "state": "",
+    "latitude": 37.086,
+    "longitude": 127.495,
+    "countryName": "South Korea",
+    "location_basis_notes": "Iljuk-myeon, Anseong"
+  },
+  {
+    "country": "KR",
+    "id": "KR RC Seoul",
+    "name": "KR, RC, Seoul / Anyang",
+    "type": "RC",
+    "city": "Seoul / Anyang",
+    "address": "Anyangcheondong-ro, Anyang",
+    "state": "",
+    "latitude": 37.389,
+    "longitude": 126.953,
+    "countryName": "South Korea",
+    "location_basis_notes": "Anyangcheondong-ro, Anyang"
+  },
+  {
+    "country": "KR",
+    "id": "KR HS Yongin",
+    "name": "KR, HS, Yongin",
+    "type": "HS",
+    "city": "Yongin",
+    "address": "Mohyeon-eup, Yongin",
+    "state": "",
+    "latitude": 37.32,
+    "longitude": 127.24,
+    "countryName": "South Korea",
+    "location_basis_notes": "Mohyeon-eup, Yongin"
+  },
+  {
+    "country": "KR",
+    "id": "KR HS Daejeon",
+    "name": "KR, HS, Daejeon",
+    "type": "HS",
+    "city": "Daejeon",
+    "address": "Dongdaejeon-ro, Daejeon",
+    "state": "",
+    "latitude": 36.335,
+    "longitude": 127.442,
+    "countryName": "South Korea",
+    "location_basis_notes": "Dongdaejeon-ro, Daejeon"
+  },
+  {
+    "country": "JP",
+    "id": "JP HQ Yokohama",
+    "name": "JP, HQ, Yokohama",
+    "type": "HQ",
+    "city": "Yokohama",
+    "address": "Chigasaki-minami, Tsuzuki-ku, Yokohama",
+    "state": "",
+    "latitude": 35.538,
+    "longitude": 139.574,
+    "countryName": "Japan",
+    "location_basis_notes": "Chigasaki-minami, Tsuzuki-ku, Yokohama"
+  },
+  {
+    "country": "JP",
+    "id": "JP RS Tokyo",
+    "name": "JP, RS, Tokyo",
+    "type": "RS",
+    "city": "Tokyo",
+    "address": "Omoriminami, Ota-ku, Tokyo",
+    "state": "",
+    "latitude": 35.573,
+    "longitude": 139.746,
+    "countryName": "Japan",
+    "location_basis_notes": "Omoriminami, Ota-ku, Tokyo"
+  },
+  {
+    "country": "JP",
+    "id": "JP Office Chiba",
+    "name": "JP, Office, Chiba",
+    "type": "Office",
+    "city": "Chiba",
+    "address": "Imai, Chuo-ku, Chiba",
+    "state": "",
+    "latitude": 35.579,
+    "longitude": 140.12,
+    "countryName": "Japan",
+    "location_basis_notes": "Imai, Chuo-ku, Chiba"
+  },
+  {
+    "country": "JP",
+    "id": "JP RS Gifu",
+    "name": "JP, RS, Gifu",
+    "type": "RS",
+    "city": "Gifu",
+    "address": "Egira-cho, Hashima City",
+    "state": "",
+    "latitude": 35.315,
+    "longitude": 136.704,
+    "countryName": "Japan",
+    "location_basis_notes": "Egira-cho, Hashima City"
+  },
+  {
+    "country": "JP",
+    "id": "JP WH Chiba",
+    "name": "JP, WH, Chiba",
+    "type": "WH",
+    "city": "Chiba",
+    "address": "Chidori, Urayasu",
+    "state": "",
+    "latitude": 35.633,
+    "longitude": 139.912,
+    "countryName": "Japan",
+    "location_basis_notes": "Chidori, Urayasu"
+  },
+  {
+    "country": "JP",
+    "id": "JP WH Koga",
+    "name": "JP, WH, Koga",
+    "type": "WH",
+    "city": "Koga",
+    "address": "Nirei, Koga, Ibaraki",
+    "state": "",
+    "latitude": 36.2,
+    "longitude": 139.84,
+    "countryName": "Japan",
+    "location_basis_notes": "Nirei, Koga, Ibaraki"
+  },
+  {
+    "country": "JP",
+    "id": "JP WH unknown",
+    "name": "JP, WH, unknown",
+    "type": "WH",
+    "city": "unknown",
+    "address": "No address or city provided; coordinates unavailable",
+    "state": "",
+    "latitude": null,
+    "longitude": null,
+    "countryName": "Japan",
+    "location_basis_notes": "No address or city provided; coordinates unavailable"
+  },
+  {
+    "country": "MO",
+    "id": "HK HS Macau",
+    "name": "HK, HS, Macau",
+    "type": "HS",
+    "city": "Macau",
+    "address": "Rua de Bruxelas, Macau",
+    "state": "",
+    "latitude": 22.189,
+    "longitude": 113.548,
+    "countryName": "Macau",
+    "location_basis_notes": "Rua de Bruxelas, Macau"
+  },
+  {
+    "country": "MO",
+    "id": "Macau second site",
+    "name": "Unspecified, Macau site",
+    "type": "Site",
+    "city": "Macau site",
+    "address": "Governor Magalhaes de Castro Avenue; approximate",
+    "state": "",
+    "latitude": 22.19,
+    "longitude": 113.552,
+    "countryName": "Macau",
+    "location_basis_notes": "Governor Magalhaes de Castro Avenue; approximate"
+  },
+  {
+    "country": "HK",
+    "id": "HK Office Kowloon",
+    "name": "HK, Office, Kowloon",
+    "type": "Office",
+    "city": "Kowloon",
+    "address": "Manulife Financial Centre, Kwun Tong",
+    "state": "",
+    "latitude": 22.31,
+    "longitude": 114.221,
+    "countryName": "Hong Kong",
+    "location_basis_notes": "Manulife Financial Centre, Kwun Tong"
+  },
+  {
+    "country": "HK",
+    "id": "HK HQ Kowloon",
+    "name": "HK, HQ, Kowloon",
+    "type": "HQ",
+    "city": "Kowloon",
+    "address": "Manulife Financial Centre, Kwun Tong",
+    "state": "",
+    "latitude": 22.31,
+    "longitude": 114.221,
+    "countryName": "Hong Kong",
+    "location_basis_notes": "Manulife Financial Centre, Kwun Tong"
+  },
+  {
+    "country": "HK",
+    "id": "HK HS Tai Kok Tsui",
+    "name": "HK, HS, Tai Kok Tsui",
+    "type": "HS",
+    "city": "Tai Kok Tsui",
+    "address": "Larch Street, Tai Kok Tsui",
+    "state": "",
+    "latitude": 22.321,
+    "longitude": 114.162,
+    "countryName": "Hong Kong",
+    "location_basis_notes": "Larch Street, Tai Kok Tsui"
+  },
+  {
+    "country": "HK",
+    "id": "HK WH Power Hub",
+    "name": "HK, WH, Power Hub",
+    "type": "WH",
+    "city": "Power Hub",
+    "address": "Goodman Western Plaza, Tuen Mun",
+    "state": "",
+    "latitude": 22.398,
+    "longitude": 113.968,
+    "countryName": "Hong Kong",
+    "location_basis_notes": "Goodman Western Plaza, Tuen Mun"
+  },
+  {
+    "country": "HK",
+    "id": "HK RC Tuen Mun",
+    "name": "HK, RC, Tuen Mun",
+    "type": "RC",
+    "city": "Tuen Mun",
+    "address": "San On Street, Tuen Mun",
+    "state": "",
+    "latitude": 22.398,
+    "longitude": 113.968,
+    "countryName": "Hong Kong",
+    "location_basis_notes": "San On Street, Tuen Mun"
+  },
+  {
+    "country": "CN",
+    "id": "CN Oglaend",
+    "name": "CN, Oglaend",
+    "type": "Site",
+    "city": "Oglaend",
+    "address": "Chuangzhi Road, Liyang, Changzhou",
+    "state": "",
+    "latitude": 31.43,
+    "longitude": 119.48,
+    "countryName": "China",
+    "location_basis_notes": "Chuangzhi Road, Liyang, Changzhou"
+  },
+  {
+    "country": "CN",
+    "id": "08 PL Zhanjiang",
+    "name": "08, PL, Zhanjiang",
+    "type": "PL",
+    "city": "Zhanjiang",
+    "address": "Yongping Road, Zhanjiang Development Zone",
+    "state": "",
+    "latitude": 21.21,
+    "longitude": 110.4,
+    "countryName": "China",
+    "location_basis_notes": "Yongping Road, Zhanjiang Development Zone"
+  },
+  {
+    "country": "CN",
+    "id": "88 PL Shanghai",
+    "name": "88, PL, Shanghai",
+    "type": "PL",
+    "city": "Shanghai",
+    "address": "Shen Nan Road, Xinzhuang Industrial Park, Minhang",
+    "state": "",
+    "latitude": 31.103,
+    "longitude": 121.374,
+    "countryName": "China",
+    "location_basis_notes": "Shen Nan Road, Xinzhuang Industrial Park, Minhang"
+  },
+  {
+    "country": "CN",
+    "id": "CN HQ Shanghai",
+    "name": "CN, HQ, Shanghai",
+    "type": "HQ",
+    "city": "Shanghai",
+    "address": "Yao Yuan Road, Pudong",
+    "state": "",
+    "latitude": 31.159,
+    "longitude": 121.506,
+    "countryName": "China",
+    "location_basis_notes": "Yao Yuan Road, Pudong"
+  },
+  {
+    "country": "CN",
+    "id": "CN RC Shanghai",
+    "name": "CN, RC, Shanghai",
+    "type": "RC",
+    "city": "Shanghai",
+    "address": "Shenxiang Road, Minhang",
+    "state": "",
+    "latitude": 31.151,
+    "longitude": 121.326,
+    "countryName": "China",
+    "location_basis_notes": "Shenxiang Road, Minhang"
+  },
+  {
+    "country": "CN",
+    "id": "CN WH Shanghai",
+    "name": "CN, WH, Shanghai",
+    "type": "WH",
+    "city": "Shanghai",
+    "address": "Baishi Road, Qingpu",
+    "state": "",
+    "latitude": 31.185,
+    "longitude": 121.07,
+    "countryName": "China",
+    "location_basis_notes": "Baishi Road, Qingpu"
+  },
+  {
+    "country": "CN",
+    "id": "CN WH Guangzhou",
+    "name": "CN, WH, Guangzhou",
+    "type": "WH",
+    "city": "Guangzhou",
+    "address": "Baofeng Road, Huangpu, Guangzhou",
+    "state": "",
+    "latitude": 23.105,
+    "longitude": 113.53,
+    "countryName": "China",
+    "location_basis_notes": "Baofeng Road, Huangpu, Guangzhou"
+  },
+  {
+    "country": "CN",
+    "id": "CN WH Kunshan",
+    "name": "CN, WH, Kunshan",
+    "type": "WH",
+    "city": "Kunshan",
+    "address": "LianHe Road, Qiandeng, Kunshan",
+    "state": "",
+    "latitude": 31.278,
+    "longitude": 121.004,
+    "countryName": "China",
+    "location_basis_notes": "LianHe Road, Qiandeng, Kunshan"
+  }
+];
+const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const fallbackAddress=s=>[s.address,s.city,s.state,s.countryName].filter(Boolean).join(', ');
+const fallbackGmap=s=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(fallbackAddress(s));
+if(window.__hiltiMapLibraryError || !window.L || typeof L.markerClusterGroup!=='function'){
+  const list=$('#list'), details=$('#details'), search=$('#search');
+  $('#map').innerHTML='<div class="map-fallback"><div><strong>Interactive map unavailable</strong>The mapping library could not be loaded. This may be caused by a corporate proxy, firewall, CDN restriction, or browser privacy policy. The site directory and Google Maps links remain available.</div></div>';
+  const draw=()=>{const q=search.value.trim().toLowerCase();const rows=SITES.filter(s=>[s.name,s.id,s.address,s.city,s.state,s.country,s.countryName,s.type].join(' ').toLowerCase().includes(q));$('#resultCount').textContent=`${rows.length} of ${SITES.length} sites`;$('#headerMeta').textContent=`${SITES.length} sites • map unavailable`;list.innerHTML=rows.length?rows.map(s=>`<button class="site" data-id="${esc(s.id)}"><div class="site-name">${esc(s.name)}</div><div class="site-sub">${esc(s.city)}${s.state?' • '+esc(s.state):''}<br>${esc(s.address)}</div><span class="badge unmapped">Directory access</span></button>`).join(''):'<div class="empty">No matching sites found</div>'};
+  list.addEventListener('click',e=>{const b=e.target.closest('.site');if(!b)return;const s=SITES.find(x=>x.id===b.dataset.id);details.innerHTML=`<h2>${esc(s.name)}</h2><p><strong>${esc(s.id)}</strong>${s.type?' • '+esc(s.type):''}</p><p>${esc(fallbackAddress(s))}</p><p><strong>Interactive map unavailable.</strong> Use the link below to open this address directly.</p><a class="map-link" href="${fallbackGmap(s)}" target="_blank" rel="noopener">Open in Google Maps</a>`});
+  search.addEventListener('input',draw);$('#clear').addEventListener('click',()=>{search.value='';draw();search.focus()});draw();return;
+}
+const map=L.map('map',{zoomControl:true,minZoom:2}).setView([8,105],3);
+const tileLayer=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+let tileErrors=0,tileSuccess=false;const mapAlert=$('#mapAlert');
+tileLayer.on('tileload',()=>{tileSuccess=true});
+tileLayer.on('tileerror',()=>{tileErrors++;if(!tileSuccess&&tileErrors>=3){mapAlert.textContent='The map background could not be loaded. A corporate proxy, firewall, or privacy rule may be blocking tile.openstreetmap.org. Site search, details, markers where available, and Google Maps links remain usable.';mapAlert.classList.add('show');$('#headerMeta').textContent=`${SITES.length} sites • map tiles unavailable`;}});
+const clusters=L.markerClusterGroup({showCoverageOnHover:false,spiderfyOnMaxZoom:true,disableClusteringAtZoom:17,maxClusterRadius:55}); map.addLayer(clusters);
+const markers=new Map(); let selectedId=null, filtered=[...SITES];
+const icon=L.divIcon({className:'pin-wrap',html:'<div class="pin"></div>',iconSize:[26,36],iconAnchor:[13,35],popupAnchor:[0,-32]});
+const fullAddress=s=>[s.address,s.city,s.state,s.countryName].filter(Boolean).join(', ');
+const gmap=s=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(fullAddress(s));
+const popup=s=>`<div class="popup-title">${esc(s.name)}</div><div>${esc(fullAddress(s))}</div><a class="map-link" href="${gmap(s)}" target="_blank" rel="noopener">Open in Google Maps</a>`;
+function validCoord(s){if(s.latitude===null||s.latitude===undefined||s.latitude===''||s.longitude===null||s.longitude===undefined||s.longitude==='')return false;const lat=Number(s.latitude),lon=Number(s.longitude);return Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180}
+function addMarker(s){if(!validCoord(s)||markers.has(s.id))return; const m=L.marker([+s.latitude,+s.longitude],{icon,title:s.name});m.bindTooltip(esc(s.name),{direction:'top',offset:[0,-28]});m.bindPopup(popup(s),{maxWidth:300});m.on('click',()=>selectSite(s.id,false));markers.set(s.id,m);clusters.addLayer(m)}
+function rebuildMarkers(){clusters.clearLayers();markers.clear();SITES.forEach(addMarker);bindClusterTooltips();fitAll();updateStatus()}
+function fitAll(){const ms=[...markers.values()];if(ms.length){const b=L.featureGroup(ms).getBounds();map.fitBounds(b,{padding:[35,35],maxZoom:13})}}
+function bindClusterTooltips(){clusters.off('clustermouseover');clusters.on('clustermouseover',e=>{const children=e.layer.getAllChildMarkers();const rows=children.slice(0,12).map(m=>{const s=SITES.find(x=>x.name===m.options.title&&validCoord(x));return s?`<div class="cluster-item"><strong>${esc(s.name)}</strong>${esc(fullAddress(s))}<br><a href="${gmap(s)}" target="_blank" rel="noopener">Open in Google Maps</a></div>`:''}).join('');const more=children.length>12?`<div class="cluster-item"><strong>${children.length-12} more sites</strong>Click the cluster to zoom and inspect.</div>`:'';e.layer.bindTooltip(`<div class="cluster-tip">${rows}${more}</div>`,{sticky:true,interactive:true,opacity:1,maxWidth:330}).openTooltip()})}
+function updateStatus(){const mapped=SITES.filter(validCoord).length;$('#headerMeta').textContent=`${SITES.length} sites • ${mapped} mapped • ${SITES.length-mapped} without coordinates`;$('#resultCount').textContent=`${filtered.length} of ${SITES.length} sites`}
+function renderList(){const list=$('#list');if(!filtered.length){list.innerHTML='<div class="empty">No matching sites found</div>';updateStatus();return}list.innerHTML=filtered.map(s=>`<button class="site ${s.id===selectedId?'selected':''}" role="option" aria-selected="${s.id===selectedId}" data-id="${esc(s.id)}"><div class="site-name">${esc(s.name)}</div><div class="site-sub">${esc(s.city)}${s.state?' • '+esc(s.state):''}<br>${esc(s.address)}</div><span class="badge ${validCoord(s)?'':'unmapped'}">${validCoord(s)?esc(s.type||'Site'):'Map position unavailable'}</span></button>`).join('');updateStatus()}
+function selectSite(id,move=true){const s=SITES.find(x=>x.id===id);if(!s)return;selectedId=id;renderList();$('#details').innerHTML=`<h2>${esc(s.name)}</h2><p><strong>${esc(s.id)}</strong>${s.type?' • '+esc(s.type):''}</p><p>${esc(fullAddress(s))}</p>${validCoord(s)?'':'<p><strong>Map position unavailable.</strong> The address remains searchable and can be opened in Google Maps.</p>'}<a class="map-link" href="${gmap(s)}" target="_blank" rel="noopener">Open in Google Maps</a>`;const m=markers.get(id);if(move&&m){clusters.zoomToShowLayer(m,()=>{map.setView(m.getLatLng(),Math.max(map.getZoom(),15));m.openPopup()})}}
+$('#list').addEventListener('click',e=>{const b=e.target.closest('.site');if(b)selectSite(b.dataset.id)});$('#list').addEventListener('mouseover',e=>{const b=e.target.closest('.site'),m=b&&markers.get(b.dataset.id);if(m)m.getElement()?.classList.add('hover')});$('#list').addEventListener('mouseout',e=>{const b=e.target.closest('.site'),m=b&&markers.get(b.dataset.id);if(m)m.getElement()?.classList.remove('hover')});
+function doSearch(){const q=$('#search').value.trim().toLocaleLowerCase();filtered=SITES.filter(s=>[s.name,s.id,s.address,s.city,s.state,s.country,s.countryName,s.type].join(' ').toLocaleLowerCase().includes(q));renderList()}$('#search').addEventListener('input',doSearch);$('#clear').addEventListener('click',()=>{$('#search').value='';doSearch();$('#search').focus()});
+(function init(){const seen=new Set();SITES.forEach(s=>{if(!s.id||!s.name||seen.has(s.id))console.warn('Invalid record',s);seen.add(s.id);addMarker(s)});renderList();bindClusterTooltips();fitAll();setTimeout(()=>map.invalidateSize(),100)})();
+})();
+</script>
+</body></html>
