@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <title>Hilti Site Locations</title>
 
 <link rel="stylesheet" href="./leaflet/dist/leaflet.css">
@@ -1227,11 +1228,55 @@ if(window.__hiltiMapLibraryError || !window.L || typeof L.markerClusterGroup!=='
   list.addEventListener('click',e=>{const b=e.target.closest('.site');if(!b)return;const s=SITES.find(x=>x.id===b.dataset.id);details.innerHTML=`<h2>${esc(s.name)}</h2><p><strong>${esc(s.id)}</strong>${s.type?' • '+esc(s.type):''}</p><p>${esc(fallbackAddress(s))}</p><p><strong>Interactive map unavailable.</strong> Use the link below to open this address directly.</p><a class="map-link" href="${fallbackGmap(s)}" target="_blank" rel="noopener">Open in Google Maps</a>`});
   search.addEventListener('input',draw);$('#clear').addEventListener('click',()=>{search.value='';draw();search.focus()});draw();return;
 }
-const map=L.map('map',{zoomControl:true}).setView([8,105],3);
-const tileLayer=L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap contributors &copy; CARTO',subdomains:'abcd'}).addTo(map);
-let tileErrors=0,tileSuccess=false;const mapAlert=$('#mapAlert');
-tileLayer.on('tileload',()=>{tileSuccess=true});
-tileLayer.on('tileerror',()=>{tileErrors++;if(!tileSuccess&&tileErrors>=3){mapAlert.textContent='The map background could not be loaded. A corporate proxy, firewall, privacy rule, or tile-service limit may be blocking the map background. Site search, details, markers where available, and Google Maps links remain usable.';mapAlert.classList.add('show');$('#headerMeta').textContent=`${SITES.length} sites • map tiles unavailable`;}});
+// Controlled OpenStreetMap directory view: horizontal movement and three zoom levels only.
+const START_CENTER=[0,115];
+const START_ZOOM=3;
+const FIXED_LATITUDE=START_CENTER[0];
+const MIN_LONGITUDE=55;
+const MAX_LONGITUDE=180;
+const APAC_BOUNDS=L.latLngBounds(L.latLng(-48,MIN_LONGITUDE),L.latLng(48,MAX_LONGITUDE));
+const map=L.map('map',{
+  zoomControl:true,
+  minZoom:3,
+  maxZoom:5,
+  zoomSnap:1,
+  zoomDelta:1,
+  wheelPxPerZoomLevel:120,
+  maxBounds:APAC_BOUNDS,
+  maxBoundsViscosity:1.0,
+  worldCopyJump:false,
+  preferCanvas:true
+}).setView(START_CENTER,START_ZOOM);
+
+L.TileLayer.prototype.options.referrerPolicy='strict-origin-when-cross-origin';
+const tileLayer=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  minZoom:3,
+  maxZoom:5,
+  noWrap:true,
+  bounds:APAC_BOUNDS,
+  updateWhenIdle:true,
+  updateWhenZooming:false,
+  keepBuffer:1,
+  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>'
+}).addTo(map);
+
+// Lock vertical dragging. The map can move left/right only.
+let correctingPosition=false;
+function clampHorizontalView(){
+  if(correctingPosition)return;
+  const center=map.getCenter();
+  const longitude=Math.max(MIN_LONGITUDE,Math.min(MAX_LONGITUDE,center.lng));
+  if(Math.abs(center.lat-FIXED_LATITUDE)>0.0001||longitude!==center.lng){
+    correctingPosition=true;
+    map.panTo([FIXED_LATITUDE,longitude],{animate:false});
+    correctingPosition=false;
+  }
+}
+map.on('drag moveend',clampHorizontalView);
+
+let consecutiveTileErrors=0,totalTileErrors=0,successfulRecoveryTiles=0;const mapAlert=$('#mapAlert');
+tileLayer.on('tileload',()=>{consecutiveTileErrors=0;if(mapAlert.classList.contains('show')&&++successfulRecoveryTiles>=5){mapAlert.classList.remove('show');successfulRecoveryTiles=0;updateStatus();}});
+tileLayer.on('tileerror',()=>{consecutiveTileErrors++;totalTileErrors++;successfulRecoveryTiles=0;if(consecutiveTileErrors>=3||totalTileErrors>=8){mapAlert.textContent='The OpenStreetMap background could not load. Open this page through its approved HTTP/HTTPS address rather than directly as a local file. Site search and directory details remain available.';mapAlert.classList.add('show');$('#headerMeta').textContent=`${SITES.length} sites • map background unavailable`;}});
 const clusters=L.markerClusterGroup({showCoverageOnHover:false,spiderfyOnMaxZoom:true,disableClusteringAtZoom:17,maxClusterRadius:55}); map.addLayer(clusters);
 const markers=new Map(); let selectedId=null, filtered=[...SITES];
 const icon=L.divIcon({className:'pin-wrap',html:'<div class="pin"></div>',iconSize:[26,36],iconAnchor:[13,35],popupAnchor:[0,-32]});
@@ -1241,14 +1286,15 @@ const popup=s=>`<div class="popup-title">${esc(s.name)}</div><div>${esc(fullAddr
 function validCoord(s){if(s.latitude===null||s.latitude===undefined||s.latitude===''||s.longitude===null||s.longitude===undefined||s.longitude==='')return false;const lat=Number(s.latitude),lon=Number(s.longitude);return Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180}
 function addMarker(s){if(!validCoord(s)||markers.has(s.id))return; const m=L.marker([+s.latitude,+s.longitude],{icon,title:s.name});m.bindTooltip(esc(s.name),{direction:'top',offset:[0,-28]});m.bindPopup(popup(s),{maxWidth:300});m.on('click',()=>selectSite(s.id,false));markers.set(s.id,m);clusters.addLayer(m)}
 function rebuildMarkers(){clusters.clearLayers();markers.clear();SITES.forEach(addMarker);bindClusterTooltips();fitAll();updateStatus()}
-function fitAll(){map.setView([8,105],3)}
+function fitAll(){map.setView(START_CENTER,START_ZOOM,{animate:false})}
 function bindClusterTooltips(){clusters.off('clustermouseover');clusters.on('clustermouseover',e=>{const children=e.layer.getAllChildMarkers();const rows=children.slice(0,12).map(m=>{const s=SITES.find(x=>x.name===m.options.title&&validCoord(x));return s?`<div class="cluster-item"><strong>${esc(s.name)}</strong>${esc(fullAddress(s))}<br><a href="${gmap(s)}" target="_blank" rel="noopener">Open in Google Maps</a></div>`:''}).join('');const more=children.length>12?`<div class="cluster-item"><strong>${children.length-12} more sites</strong>Click the cluster to zoom and inspect.</div>`:'';e.layer.bindTooltip(`<div class="cluster-tip">${rows}${more}</div>`,{sticky:true,interactive:true,opacity:1,maxWidth:330}).openTooltip()})}
 function updateStatus(){const mapped=SITES.filter(validCoord).length;$('#headerMeta').textContent=`${SITES.length} sites • ${mapped} mapped • ${SITES.length-mapped} without coordinates`;$('#resultCount').textContent=`${filtered.length} of ${SITES.length} sites`}
 function renderList(){const list=$('#list');if(!filtered.length){list.innerHTML='<div class="empty">No matching sites found</div>';updateStatus();return}list.innerHTML=filtered.map(s=>`<button class="site ${s.id===selectedId?'selected':''}" role="option" aria-selected="${s.id===selectedId}" data-id="${esc(s.id)}"><div class="site-name">${esc(s.name)}</div><div class="site-sub">${esc(s.city)}${s.state?' • '+esc(s.state):''}<br>${esc(s.address)}</div><span class="badge ${validCoord(s)?'':'unmapped'}">${validCoord(s)?esc(s.type||'Site'):'Map position unavailable'}</span></button>`).join('');updateStatus()}
-function selectSite(id,move=true){const s=SITES.find(x=>x.id===id);if(!s)return;selectedId=id;renderList();$('#details').innerHTML=`<h2>${esc(s.name)}</h2><p><strong>${esc(s.id)}</strong>${s.type?' • '+esc(s.type):''}</p><p>${esc(fullAddress(s))}</p>${validCoord(s)?'':'<p><strong>Map position unavailable.</strong> The address remains searchable and can be opened in Google Maps.</p>'}<a class="map-link" href="${gmap(s)}" target="_blank" rel="noopener">Open in Google Maps</a>`;const m=markers.get(id);if(move&&m){clusters.zoomToShowLayer(m,()=>{map.setView(m.getLatLng(),Math.max(map.getZoom(),15));m.openPopup()})}}
+function selectSite(id,move=true){const s=SITES.find(x=>x.id===id);if(!s)return;selectedId=id;renderList();$('#details').innerHTML=`<h2>${esc(s.name)}</h2><p><strong>${esc(s.id)}</strong>${s.type?' • '+esc(s.type):''}</p><p>${esc(fullAddress(s))}</p>${validCoord(s)?'':'<p><strong>Map position unavailable.</strong> The address remains searchable and can be opened in Google Maps.</p>'}<a class="map-link" href="${gmap(s)}" target="_blank" rel="noopener">Open in Google Maps</a>`;const m=markers.get(id);if(move&&m){clusters.zoomToShowLayer(m,()=>{map.setView(m.getLatLng(),Math.min(5,Math.max(map.getZoom(),4)),{animate:false});m.openPopup()})}}
 $('#list').addEventListener('click',e=>{const b=e.target.closest('.site');if(b)selectSite(b.dataset.id)});$('#list').addEventListener('mouseover',e=>{const b=e.target.closest('.site'),m=b&&markers.get(b.dataset.id);if(m)m.getElement()?.classList.add('hover')});$('#list').addEventListener('mouseout',e=>{const b=e.target.closest('.site'),m=b&&markers.get(b.dataset.id);if(m)m.getElement()?.classList.remove('hover')});
 function doSearch(){const q=$('#search').value.trim().toLocaleLowerCase();filtered=SITES.filter(s=>[s.name,s.id,s.address,s.city,s.state,s.country,s.countryName,s.type].join(' ').toLocaleLowerCase().includes(q));renderList()}$('#search').addEventListener('input',doSearch);$('#clear').addEventListener('click',()=>{$('#search').value='';doSearch();$('#search').focus()});
-(function init(){const seen=new Set();SITES.forEach(s=>{if(!s.id||!s.name||seen.has(s.id))console.warn('Invalid record',s);seen.add(s.id);addMarker(s)});renderList();bindClusterTooltips();setTimeout(()=>map.invalidateSize(),100)})();
+(function init(){const seen=new Set();SITES.forEach(s=>{if(!s.id||!s.name||seen.has(s.id))console.warn('Invalid record',s);seen.add(s.id);addMarker(s)});renderList();bindClusterTooltips();map.setView(START_CENTER,START_ZOOM,{animate:false});map.whenReady(()=>setTimeout(()=>{map.invalidateSize({pan:false});map.setView(START_CENTER,START_ZOOM,{animate:false})},150))})();
+let resizeTimer;window.addEventListener('resize',()=>{window.clearTimeout(resizeTimer);resizeTimer=window.setTimeout(()=>{map.invalidateSize({pan:false,debounceMoveend:true});clampHorizontalView()},150)});
 })();
 </script>
 </body></html>
