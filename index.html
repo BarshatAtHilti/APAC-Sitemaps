@@ -2456,17 +2456,33 @@ if(window.__hiltiMapLibraryError || !window.L || typeof L.markerClusterGroup!=='
 
 }
 
-const map=L.map('map',{zoomControl:true,minZoom:2,maxZoom:12}).setView([8,105],3);
+// APAC directory view: limited movement and zoom reduce unnecessary tile requests.
+const APAC_BOUNDS=L.latLngBounds([-50,55],[55,180]);
+const START_VIEW=[8,110];
+const START_ZOOM=3;
+const MAX_DIRECTORY_ZOOM=7;
 
-const tileLayer=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:12,updateWhenIdle:true,updateWhenZooming:false,keepBuffer:1,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+const map=L.map('map',{
+  zoomControl:true,minZoom:3,maxZoom:MAX_DIRECTORY_ZOOM,
+  maxBounds:APAC_BOUNDS,maxBoundsViscosity:1.0,preferCanvas:true,
+  worldCopyJump:false,wheelDebounceTime:120,wheelPxPerZoomLevel:120,
+  zoomSnap:1,zoomDelta:1
+}).setView(START_VIEW,START_ZOOM);
+
+const tileLayer=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  minZoom:3,maxZoom:MAX_DIRECTORY_ZOOM,noWrap:true,bounds:APAC_BOUNDS,
+  updateWhenIdle:true,updateWhenZooming:false,keepBuffer:4,
+  detectRetina:false,crossOrigin:true,
+  attribution:'&copy; OpenStreetMap contributors'
+}).addTo(map);
 
 let tileErrors=0,tileSuccess=false;const mapAlert=$('#mapAlert');
 
-tileLayer.on('tileload',()=>{tileSuccess=true});
+tileLayer.on('tileload',()=>{tileSuccess=true;tileErrors=0;mapAlert.classList.remove('show')});
 
-tileLayer.on('tileerror',()=>{tileErrors++;if(!tileSuccess&&tileErrors>=3){mapAlert.textContent='Map tiles could not be loaded. If the browser console shows HTTP 429, the public OpenStreetMap tile service is rate-limiting requests. Wait a while before retrying; repeated refreshes may prolong the issue. Site search, details, markers where available, and Google Maps links remain usable.';mapAlert.classList.add('show');$('#headerMeta').textContent=`${SITES.length} sites • map tiles unavailable`;}});
+tileLayer.on('tileerror',()=>{tileErrors++;if(tileErrors>=3){mapAlert.textContent='Map tiles could not be loaded. If the browser console shows HTTP 429, the public OpenStreetMap tile service is rate-limiting requests. Pause panning and zooming for a few minutes; repeated refreshes may prolong the restriction. Site search, details, markers where available, and Google Maps links remain usable.';mapAlert.classList.add('show');$('#headerMeta').textContent=`${SITES.length} sites • map tiles unavailable`;}});
 
-const clusters=L.markerClusterGroup({showCoverageOnHover:false,spiderfyOnMaxZoom:true,disableClusteringAtZoom:17,maxClusterRadius:55}); map.addLayer(clusters);
+const clusters=L.markerClusterGroup({showCoverageOnHover:false,spiderfyOnMaxZoom:true,disableClusteringAtZoom:MAX_DIRECTORY_ZOOM,maxClusterRadius:55,removeOutsideVisibleBounds:true}); map.addLayer(clusters);
 
 const markers=new Map(); let selectedId=null, filtered=[...SITES];
 
@@ -2484,7 +2500,7 @@ function addMarker(s){if(!validCoord(s)||markers.has(s.id))return; const m=L.mar
 
 function rebuildMarkers(){clusters.clearLayers();markers.clear();SITES.forEach(addMarker);bindClusterTooltips();fitAll();updateStatus()}
 
-function fitAll(){const ms=[...markers.values()];if(ms.length){const b=L.featureGroup(ms).getBounds();map.fitBounds(b,{padding:[35,35],maxZoom:12})}}
+function fitAll(){const ms=[...markers.values()];if(ms.length){const b=L.featureGroup(ms).getBounds();map.fitBounds(b,{padding:[35,35],maxZoom:START_ZOOM})}}
 
 function bindClusterTooltips(){clusters.off('clustermouseover');clusters.on('clustermouseover',e=>{const children=e.layer.getAllChildMarkers();const rows=children.slice(0,12).map(m=>{const s=SITES.find(x=>x.name===m.options.title&&validCoord(x));return s?`<div class="cluster-item"><strong>${esc(s.name)}</strong>${esc(fullAddress(s))}<br><a href="${gmap(s)}" target="_blank" rel="noopener">Open in Google Maps</a></div>`:''}).join('');const more=children.length>12?`<div class="cluster-item"><strong>${children.length-12} more sites</strong>Click the cluster to zoom and inspect.</div>`:'';e.layer.bindTooltip(`<div class="cluster-tip">${rows}${more}</div>`,{sticky:true,interactive:true,opacity:1,maxWidth:330}).openTooltip()})}
 
@@ -2494,7 +2510,7 @@ function updateStatus(){const mapped=SITES.filter(validCoord).length;$('#headerM
 
 function renderList(){const list=$('#list');$('#showAllSites').hidden=filtered.length===SITES.length;if(!filtered.length){list.innerHTML='<div class="empty">No matching sites found</div>';updateStatus();return}list.innerHTML=filtered.map(s=>`<button class="site ${s.id===selectedId?'selected':''}" role="option" aria-selected="${s.id===selectedId}" data-id="${esc(s.id)}"><div class="site-name">${esc(s.name)}</div><div class="site-sub">${esc(s.city)}${s.state?' • '+esc(s.state):''}<br>${esc(s.address)}</div><span class="badge ${validCoord(s)?'':'unmapped'}">${validCoord(s)?esc(s.type||'Site'):'Map position unavailable'}</span></button>`).join('');updateStatus()}
 
-function selectSite(id,move=true){const s=SITES.find(x=>x.id===id);if(!s)return;if(!filtered.some(x=>x.id===id)){filtered=[...SITES];$('#search').value='';}selectedId=id;renderList();$('#details').innerHTML=`<h2>${esc(s.name)}</h2><p><strong>${esc(s.id)}</strong>${s.type?' • '+esc(s.type):''}</p><p>${esc(fullAddress(s))}</p>${validCoord(s)?'':'<p><strong>Map position unavailable.</strong> The address remains searchable and can be opened in Google Maps.</p>'}<a class="map-link" href="${gmap(s)}" target="_blank" rel="noopener">Open in Google Maps</a>`;const m=markers.get(id);if(move&&m){clusters.zoomToShowLayer(m,()=>{map.setView(m.getLatLng(),Math.min(Math.max(map.getZoom(),10),12));m.openPopup()})}}
+function selectSite(id,move=true){const s=SITES.find(x=>x.id===id);if(!s)return;if(!filtered.some(x=>x.id===id)){filtered=[...SITES];$('#search').value='';}selectedId=id;renderList();$('#details').innerHTML=`<h2>${esc(s.name)}</h2><p><strong>${esc(s.id)}</strong>${s.type?' • '+esc(s.type):''}</p><p>${esc(fullAddress(s))}</p>${validCoord(s)?'':'<p><strong>Map position unavailable.</strong> The address remains searchable and can be opened in Google Maps.</p>'}<a class="map-link" href="${gmap(s)}" target="_blank" rel="noopener">Open in Google Maps</a>`;const m=markers.get(id);if(move&&m){clusters.zoomToShowLayer(m,()=>{map.setView(m.getLatLng(),MAX_DIRECTORY_ZOOM);m.openPopup()})}}
 
 $('#showAllSites').addEventListener('click',()=>{$('#search').value='';filtered=[...SITES];selectedId=null;renderList();$('#details').innerHTML='<p>Select a site to view details.</p>';});
 
@@ -2502,7 +2518,7 @@ $('#list').addEventListener('click',e=>{const b=e.target.closest('.site');if(b)s
 
 function doSearch(){const q=$('#search').value.trim().toLocaleLowerCase();filtered=SITES.filter(s=>[s.name,s.id,s.address,s.city,s.state,s.country,s.countryName,s.type].join(' ').toLocaleLowerCase().includes(q));renderList()}$('#search').addEventListener('input',doSearch);$('#clear').addEventListener('click',()=>{$('#search').value='';doSearch();$('#search').focus()});
 
-(function init(){const seen=new Set();SITES.forEach(s=>{if(!s.id||!s.name||seen.has(s.id))console.warn('Invalid record',s);seen.add(s.id);addMarker(s)});renderList();bindClusterTooltips();fitAll();setTimeout(()=>map.invalidateSize(),100)})();
+(function init(){const seen=new Set();SITES.forEach(s=>{if(!s.id||!s.name||seen.has(s.id))console.warn('Invalid record',s);seen.add(s.id);addMarker(s)});renderList();bindClusterTooltips();map.setView(START_VIEW,START_ZOOM);setTimeout(()=>map.invalidateSize(),100)})();
 
 })();
 
