@@ -2398,15 +2398,15 @@ if(window.__hiltiMapLibraryError || !window.L || typeof L.markerClusterGroup!=='
 
 }
 
-// APAC directory view: include Australia and New Zealand in the visible region while keeping the map constrained.
+// APAC directory view: clip only the Russian northern area while keeping the rest of the APAC region visible.
 
-const APAC_BOUNDS=L.latLngBounds([-55,55],[80,180]);
+const APAC_BOUNDS=L.latLngBounds([-55,55],[60,180]);
 
-const START_VIEW=[-20,140];
+const START_VIEW=[20,120];
 
 const START_ZOOM=3;
 
-const MAX_DIRECTORY_ZOOM=5;
+const MAX_DIRECTORY_ZOOM=7;
 
 const map=L.map('map',{
 
@@ -2444,9 +2444,18 @@ window.addEventListener('resize',()=>{requestAnimationFrame(()=>map.invalidateSi
 
 window.addEventListener('orientationchange',()=>{setTimeout(()=>map.invalidateSize(),100);});
 
-const markers=new Map(); let selectedId=null, filtered=[...SITES];
+const markers=new Map(); let selectedId=null, hoveredSiteId=null, filtered=[...SITES];
 
-const icon=L.divIcon({className:'pin-wrap',html:'<div class="pin"></div>',iconSize:[26,36],iconAnchor:[13,35],popupAnchor:[0,-32]});
+function syncMarkerState(){
+  for (const marker of markers.values()) {
+    const el = marker.getElement();
+    if (!el) continue;
+    const isActive = marker.siteId === selectedId || (marker.siteId === hoveredSiteId && !selectedId);
+    el.classList.toggle('hover', isActive);
+  }
+}
+
+const icon=L.divIcon({className:'pin-wrap',html:'<div class="pin"></div>',iconSize:[26,36],iconAnchor:[13,35],popupAnchor:[20,-10]});
 
 const fullAddress=s=>[s.address,s.city,s.state,s.countryName].filter(Boolean).join(', ');
 
@@ -2456,7 +2465,7 @@ const popup=s=>`<div class="popup-title">${esc(siteDisplayName(s))}</div><div>${
 
 function validCoord(s){if(s.latitude===null||s.latitude===undefined||s.latitude===''||s.longitude===null||s.longitude===undefined||s.longitude==='')return false;const lat=Number(s.latitude),lon=Number(s.longitude);return Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180}
 
-function addMarker(s){if(!validCoord(s))return;const siteIndex=SITES.indexOf(s);const markerKey=String(s.id)+'__'+siteIndex;const m=L.marker([+s.latitude,+s.longitude],{icon,title:siteDisplayName(s)});m.siteId=s.id;m.siteIndex=siteIndex;m.markerKey=markerKey;m.bindTooltip(esc(siteDisplayName(s)),{direction:'top',offset:[0,-28]});m.bindPopup(popup(s),{maxWidth:520,autoPan:true});m.on('click',()=>selectSiteByIndex(siteIndex,false));markers.set(markerKey,m);clusters.addLayer(m)}
+function addMarker(s){if(!validCoord(s))return;const siteIndex=SITES.indexOf(s);const markerKey=String(s.id)+'__'+siteIndex;const m=L.marker([+s.latitude,+s.longitude],{icon,title:siteDisplayName(s)});m.siteId=s.id;m.siteIndex=siteIndex;m.markerKey=markerKey;m.on('click',()=>selectSiteByIndex(siteIndex,false));markers.set(markerKey,m);clusters.addLayer(m)}
 
 function rebuildMarkers(){clusters.clearLayers();markers.clear();SITES.forEach(addMarker);bindClusterTooltips();fitAll();updateStatus()}
 
@@ -2464,22 +2473,6 @@ function fitAll(){const ms=[...markers.values()];if(ms.length){const b=L.feature
 
 function bindClusterTooltips(){
   clusters.off('clustermouseover clustermouseout');
-  clusters.on('clustermouseover', e => {
-    const children = e.layer.getAllChildMarkers();
-    const rows = children.map(m => {
-      const site = SITES[m.siteIndex];
-      if (!site) return '';
-      return `<div class="cluster-item"><strong>${esc(siteDisplayName(site))}</strong><div>${esc(site.id || 'N/A')}${site.type ? ' • ' + esc(site.type) : ''}</div><div>${esc(fullAddress(site))}</div><a href="${gmap(site)}" target="_blank" rel="noopener">Open in Google Maps</a></div>`;
-    }).join('');
-    e.layer.bindPopup(`<div class="cluster-tip"><strong>${children.length} site${children.length === 1 ? '' : 's'} in this location</strong>${rows}</div>`, {
-      maxWidth: 560, autoPan: true, closeButton: true, autoClose: true, closeOnClick: true
-    }).openPopup();
-  });
-  clusters.on('clustermouseout', e => {
-    if (e.layer && typeof e.layer.closePopup === 'function') {
-      e.layer.closePopup();
-    }
-  });
 }
 
 clusters.on('clusterclick', e => {const indexes=new Set(e.layer.getAllChildMarkers().map(m=>m.siteIndex).filter(Number.isInteger));if(!indexes.size)return;filtered=SITES.filter((site,index)=>indexes.has(index));selectedId=null;$('#search').value='';renderList();$('#details').innerHTML=`<h2>Sites in this map cluster</h2><p>${filtered.length} sites are represented by the selected cluster. Select a site in the list to view its full details.</p>`;});
@@ -2498,15 +2491,19 @@ function selectSiteByIndex(index, move=true) {
   if (!site) return;
   if (!filtered.includes(site)) { filtered = [...SITES]; $('#search').value = ''; }
   selectedId = site.id;
+  hoveredSiteId = null;
   renderList();
+  syncMarkerState();
   $('#details').innerHTML = `<h2>${esc(siteDisplayName(site))}</h2><p><strong>${esc(site.id || 'N/A')}</strong>${site.type ? ' • ' + esc(site.type) : ''}</p><p>${esc(fullAddress(site))}</p>${validCoord(site) ? '' : '<p><strong>Map position unavailable.</strong> The address remains searchable and can be opened in Google Maps.</p>'}<a class="map-link" href="${gmap(site)}" target="_blank" rel="noopener">Open in Google Maps</a>`;
   const marker = markers.get(String(site.id) + '__' + index);
   if (move && marker) clusters.zoomToShowLayer(marker, () => { map.setView(marker.getLatLng(), MAX_DIRECTORY_ZOOM); marker.openPopup(); });
 }
 
-$('#showAllSites').addEventListener('click',()=>{$('#search').value='';filtered=[...SITES];selectedId=null;renderList();$('#details').innerHTML='<p>Select a site to view details.</p>';});
+$('#showAllSites').addEventListener('click',()=>{$('#search').value='';filtered=[...SITES];selectedId=null;hoveredSiteId=null;renderList();syncMarkerState();$('#details').innerHTML='<p>Select a site to view details.</p>';});
 
-$('#list').addEventListener('click',e=>{const b=e.target.closest('.site');if(b)selectSiteByIndex(Number(b.dataset.index))});$('#list').addEventListener('mouseover',e=>{const b=e.target.closest('.site'),m=b&&markers.get(String(SITES[Number(b.dataset.index)]?.id)+'__'+Number(b.dataset.index));if(m)m.getElement()?.classList.add('hover')});$('#list').addEventListener('mouseout',e=>{const b=e.target.closest('.site'),m=b&&markers.get(String(SITES[Number(b.dataset.index)]?.id)+'__'+Number(b.dataset.index));if(m)m.getElement()?.classList.remove('hover')});
+$('#list').addEventListener('click',e=>{const b=e.target.closest('.site');if(b)selectSiteByIndex(Number(b.dataset.index))});
+$('#list').addEventListener('mouseover',e=>{const b=e.target.closest('.site'); if(!b) return; hoveredSiteId = SITES[Number(b.dataset.index)]?.id ?? null; syncMarkerState();});
+$('#list').addEventListener('mouseout',e=>{const b=e.target.closest('.site'); if(!b || selectedId) return; const currentId = SITES[Number(b.dataset.index)]?.id ?? null; if (hoveredSiteId === currentId) return; syncMarkerState();});
 
 function doSearch(){const q=$('#search').value.trim().toLocaleLowerCase();filtered=SITES.filter(s=>[s.name,s.id,s.address,s.city,s.state,s.country,s.countryName,s.type].join(' ').toLocaleLowerCase().includes(q));renderList()}$('#search').addEventListener('input',doSearch);$('#clear').addEventListener('click',()=>{$('#search').value='';doSearch();$('#search').focus()});
 
