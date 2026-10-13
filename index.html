@@ -2489,7 +2489,8 @@ function selectSite(id, move=true) {
 function selectSiteByIndex(index, move=true) {
   const site = SITES[index];
   if (!site) return;
-  if (!filtered.includes(site)) { filtered = [...SITES]; $('#search').value = ''; }
+  $('#search').value = '';
+  filtered = [site];
   selectedId = site.id;
   hoveredSiteId = null;
   renderList();
